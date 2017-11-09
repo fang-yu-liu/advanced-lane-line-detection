@@ -61,7 +61,7 @@ def mag_sobel_hls(hls, thresh=(0, 255), channel=2, sobel_kernel=3):
     binary_output[(scaled_sobel > thresh[0]) & (scaled_sobel <= thresh[1])] = 1
     return binary_output
 
-def dir_sobel_hls(hls, thresh=(0, 255), channel=2, sobel_kernel=3):
+def dir_sobel_hls(hls, thresh=(0, np.pi/2), channel=2, sobel_kernel=3):
     '''
     Thresholds the direction of the gradient for a given sobel kernel size
     
@@ -77,10 +77,9 @@ def dir_sobel_hls(hls, thresh=(0, 255), channel=2, sobel_kernel=3):
     sobelx = cv2.Sobel(channel_select, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
     sobely = cv2.Sobel(channel_select, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
     dir_sobel = np.arctan2(np.absolute(sobely), np.absolute(sobelx))
-    scaled_sobel = np.uint8(255*dir_sobel/np.max(dir_sobel))
     
-    binary_output = np.zeros_like(scaled_sobel)
-    binary_output[(scaled_sobel > thresh[0]) & (scaled_sobel <= thresh[1])] = 1
+    binary_output = np.zeros_like(dir_sobel)
+    binary_output[(dir_sobel > thresh[0]) & (dir_sobel <= thresh[1])] = 1
     return binary_output
     
 def sobel_hls(hls, thresh=(0, 255), gradient='x', channel=2, sobel_kernel=3):
