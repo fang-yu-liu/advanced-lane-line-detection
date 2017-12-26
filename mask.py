@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-def calculate_vertices(image, height_percentage = 0.4, 
+def calculate_vertices(image, height_percentage = 0.5, 
                        top_width_percentage = 0.04, 
                        bottom_width_percentage = 0.90):
     '''
