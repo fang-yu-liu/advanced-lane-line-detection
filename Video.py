@@ -15,10 +15,12 @@ class Video():
         self.Minv = None
         self.left_line = Line()
         self.right_line = Line()
+        #reset the line detection after too many bad curvature detection
         self.reset = True
-        self.bad_detection = 0
     
     def sliding_window(self, image):
+        
+        #print("sliding window")
         
         binary_warped = np.copy(image)
         # Take a histogram of the bottom half of the image
@@ -96,24 +98,27 @@ class Video():
         ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
         left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
         right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
-
+        '''
         output[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
         output[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+        '''
         
         self.left_line.allx = leftx
         self.left_line.ally = lefty
+        self.left_line.current_fitx = left_fitx
         self.left_line.current_fit = left_fit
         self.right_line.allx = rightx
         self.right_line.ally = righty
+        self.right_line.current_fitx = right_fitx
         self.right_line.current_fit = right_fit
-        
-        return output
-        
+                
     def skipping_window(self, image):
         
+        #print("skipping window")
+        
         binary_warped = np.copy(image)
-        left_fit = self.left_line.recent_fit[-1]
-        right_fit = self.right_line.recent_fit[-1]
+        left_fit = self.left_line.best_fit
+        right_fit = self.right_line.best_fit
         
         nonzero = binary_warped.nonzero()
         nonzeroy = np.array(nonzero[0])
@@ -140,6 +145,7 @@ class Video():
         left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
         right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
 
+        '''
         # Create an image to draw on and an image to show the selection window
         output = np.dstack((binary_warped, binary_warped, binary_warped))*255
         window_img = np.zeros_like(output)
@@ -162,16 +168,17 @@ class Video():
         cv2.fillPoly(window_img, np.int_([left_line_pts]), (0,255, 0))
         cv2.fillPoly(window_img, np.int_([right_line_pts]), (0,255, 0))
         output = cv2.addWeighted(output, 1, window_img, 0.3, 0)
+        '''
         
         self.left_line.allx = leftx
         self.left_line.ally = lefty
+        self.left_line.current_fitx = left_fitx
         self.left_line.current_fit = left_fit
         self.right_line.allx = rightx
         self.right_line.ally = righty
+        self.right_line.current_fitx = right_fitx
         self.right_line.current_fit = right_fit
-        
-        return output
-    
+            
     def measuring_curvature(self):
         
         leftx = self.left_line.allx
@@ -179,7 +186,9 @@ class Video():
         rightx = self.right_line.allx
         righty = self.right_line.ally
         
-        y_eval = 719
+        # Define y-value where we want radius of curvature
+        # Choose the maximum y-value, corresponding to the bottom of the image
+        y_eval = np.max(leftx)
         # Define conversions in x and y from pixels space to meters
         ym_per_pix = 30/720 # meters per pixel in y dimension
         xm_per_pix = 3.7/700 # meters per pixel in x dimension
@@ -188,11 +197,17 @@ class Video():
         left_fit_cr = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
         right_fit_cr = np.polyfit(righty*ym_per_pix, rightx*xm_per_pix, 2)
         # Calculate the new radii of curvature
-        left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
-        right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+        # Use the y-value in world space
+        y_eval_m = y_eval*ym_per_pix
+        left_curverad = ((1 + (2*left_fit_cr[0]*y_eval_m + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+        right_curverad = ((1 + (2*right_fit_cr[0]*y_eval_m + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+        left_x_of_ymax = left_fit_cr[0]*y_eval_m**2 + left_fit_cr[1]*y_eval_m + left_fit_cr[2]
+        right_x_of_ymax = right_fit_cr[0]*y_eval_m**2 + right_fit_cr[1]*y_eval_m + right_fit_cr[2]
         
         self.left_line.radius_of_curvature = left_curverad
         self.right_line.radius_of_curvature = right_curverad
+        self.left_line.x_of_ymax = left_x_of_ymax        
+        self.right_line.x_of_ymax = right_x_of_ymax
     
     def annotate(self, image):
         
@@ -203,10 +218,12 @@ class Video():
 
         # Recast the x and y points into usable format for cv2.fillPoly()        
         ploty = np.linspace(0, img.shape[0]-1, img.shape[0] )
-        left_fit = self.left_line.current_fit
-        right_fit = self.right_line.current_fit
-        left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
-        right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+        #left_fit = self.left_line.best_fit
+        #right_fit = self.right_line.best_fit
+        #left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+        #right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+        left_fitx = self.left_line.best_fitx
+        right_fitx = self.right_line.best_fitx
         
         pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
         pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
@@ -223,12 +240,34 @@ class Video():
         left_curverad = self.left_line.radius_of_curvature
         right_curverad = self.right_line.radius_of_curvature
         mean_curverad = (left_curverad + right_curverad)/2
+        
+        left_lane_pos = self.left_line.x_of_ymax        
+        right_lane_pos = self.right_line.x_of_ymax
+        #Calculate the center position in meters
+        center_lane_pos_m = (left_lane_pos + right_lane_pos)/2
+        
+        #Car center position in pixel (middle of the image)
+        car_center_position = img.shape[1]/2
+        #Car center position in meter
+        xm_per_pix = 3.7/700 # meters per pixel in x dimension
+        car_center_position_m = car_center_position*xm_per_pix
+        
+        center_dist = (car_center_position_m - center_lane_pos_m)
+        center_dist_direction = ''
+        if center_dist > 0:
+            center_dist_direction = 'right'
+        else:
+            center_dist_direction = 'left'
+        center_dis_abs = abs(center_dist)
 
         cv2.putText(annotated_image, text='Radius of Curvature = {0:} (m)'.format(int(mean_curverad)), 
                     org=(100,100), fontFace=2, fontScale=1.5,
-                    color=(255,255,255), thickness=3)
+                    color=(255,255,255), thickness=2)
+        cv2.putText(annotated_image, 
+                    text='Vehicle Position = {0:.2f} (m) {1} of the center'.format(center_dis_abs, center_dist_direction),
+                    org=(100,150), fontFace=2, fontScale=1.5,
+                    color=(255,255,255), thickness=2)
         return annotated_image
-        
     def process(self, image):
         
         # Undistort image
@@ -247,15 +286,18 @@ class Video():
         # Perspective Transform
         binary_warped, self.M, self.Minv = perspective_transform(masked_edges)
         
-        line_detected = self.sliding_window(binary_warped)
-        #if self.reset is True:
-        #    line_detected = self.sliding_window(binary_warped)
-        #else:
-        #    line_detected = self.skipping_window(binary_warped)
+        # If left or right line are not detected, redo the sliding window search
+        # Else just search in a margin around the previous line position
+        if self.left_line.detected is False or self.right_line.detected is False:
+            self.sliding_window(binary_warped)
+            self.reset = True
+        else:
+            self.skipping_window(binary_warped)
+            self.reset = False
         
         self.measuring_curvature()
-        #self.validation()
-        #self.update_lane_line_detection()
+        self.left_line.update(self.reset)
+        self.right_line.update(self.reset)
         
         processed_image = self.annotate(undistorted_image)
         
