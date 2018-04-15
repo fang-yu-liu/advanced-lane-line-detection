@@ -63,6 +63,8 @@ I'll use "./test_images/test1.jpg" to demonstrate the pipeline.
 
 #### 1. Provide an example of a distortion-corrected image.
 
+`undistort.py`
+
 Original Image  | Distortion-corrected
 --------------- | -----------------
 ![test1][test1] | ![undistorted][undistorted]
@@ -70,7 +72,7 @@ Original Image  | Distortion-corrected
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `Video.py` and details code for thresholding are in `threshold_select.py`).
+I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines 276 through 280 in `Video.py` and details code for thresholding are in `threshold_select.py`).
 
 1. Conver the image to hls domain. Using
 2. Color thresholds: Perform a threshold select against s channel. (Threshold = (130, 255))
@@ -90,10 +92,10 @@ src = np.float32([[200, 720],[1100, 720],[580, 455],[700, 455]])
 dst = np.float32([[300, 720],[1000, 720],[300, 0],[1000, 0]])
 ```
 
-The steps in the pipeline for perspective tranform are in line # through # in `Video.py`.
+The steps in the pipeline for perspective tranform are in line 282 through 287 in `Video.py`.
 
-1. Mask the image for the areas that we want to focus on.
-2. Perform perspective transform on the masked image.
+1. Mask the image for the areas that we want to focus on. (`mask.py`)
+2. Perform perspective transform on the masked image. (`perspective_transform.py`)
 
 Masked Image      | Warped
 ----------------- | -----------------
