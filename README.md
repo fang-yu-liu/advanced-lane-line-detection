@@ -22,7 +22,7 @@ The goals / steps of this project are the following:
 [binary_select]: ./output_images/test1_binary_select.jpg "Binary Select"
 [masked]: ./output_images/test1_masked_edges.jpg "Masked"
 [warped]: ./output_images/test1_binary_warped.jpg "Warped"
-[slidding_window]: ./output_images/test1_slidding_window.jpg "Sliding Window"
+[sliding_window]: ./output_images/test1_sliding_window.jpg "Sliding Window"
 [skipping_window]: ./output_images/test1_skipping_window.jpg "Skipping Window"
 [annotated]: ./output_images/test1_annotated.jpg "Annotated"
 
@@ -106,7 +106,7 @@ I used the provided code for skipping window and sliding window to fit my lane l
 
 Sliding Window    | Skipping Window
 ----------------- | -----------------
-![slidding_window][slidding_window] | ![skipping_window][skipping_window]
+![sliding_window][sliding_window] | ![skipping_window][skipping_window]
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
@@ -132,4 +132,24 @@ Here's a [link to my video result](https://github.com/fang-yu-liu/advanced-lane-
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-TODO
+I'll describe my general approach of the line detection first and then discuss some potential improvement.
+
+Here is the steps of the pipeline that process each frame in the video: (code block 3 in `advanced_lane_line_video.ipynb` and line 271 through 310 in `Video.py`):
+
+1. Create an Video object with camera calibration matrix and distortion coefficient
+2. Process each frame in the video
+  1. Distortion correction
+  2. Threshold select
+  3. Mask
+  4. Perspective transform
+  5. If reset, perform sliding window search. If not, perform skipping window search.
+  6. Measure curvature
+  7. Update line information for left line and right line (line 54 through 73 in `Line.py`)
+    * Calculate the difference between current fit and previous fit. If the difference is too big, then treat it as a bad fit and increase the `bad_detection` by 1. If the difference is reasonable, then add current fit to recent fits and take average along recent fits (across `n` fits) to get the best fit for lane line.
+  8. If `bad_detection` for right/left line is more than `max_bad_detection`, then set reset to True. Clear all recent fits and redo sliding window search.
+
+Potential improvement approaches:
+* Fine tune the threshold select to get a better binary select image
+* Apply directional or magnitude threshold select to gain more information
+* Better mechanism to determine whether the line is a bad detection other than just the difference of the coefficients
+* Separating the reset logic for right and left lines instead of resetting them together
