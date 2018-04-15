@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from Line import Line
 from undistort import undistort
-from threshold_select import bgr_to_grayscale, bgr_to_hls, hls_channel_select, mag_sobel_hls, dir_sobel_hls, sobel_hls
+from threshold_select import rgb_to_grayscale, rgb_to_hls, hls_channel_select, mag_sobel_hls, dir_sobel_hls, sobel_hls
 from perspective_transform import perspective_transform
 from mask import calculate_vertices, region_of_interest
 
@@ -117,6 +117,16 @@ class Video():
         #print("skipping window")
         
         binary_warped = np.copy(image)
+        
+        #if self.left_line.detected is True:
+        #    left_fit = self.left_line.recent_fits[-1]
+        #else:
+        #    left_fit = self.left_line.best_fit
+        #if self.right_line.detected is True:
+        #    right_fit = self.right_line.recent_fits[-1]
+        #else:
+        #    right_fit = self.right_line.best_fit
+        
         left_fit = self.left_line.best_fit
         right_fit = self.right_line.best_fit
         
@@ -217,20 +227,18 @@ class Video():
         color_warp = np.zeros_like(img).astype(np.uint8)
 
         # Recast the x and y points into usable format for cv2.fillPoly()        
-        ploty = np.linspace(0, img.shape[0]-1, img.shape[0] )
-        #left_fit = self.left_line.best_fit
-        #right_fit = self.right_line.best_fit
-        #left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
-        #right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
-        left_fitx = self.left_line.best_fitx
-        right_fitx = self.right_line.best_fitx
+        ploty = np.linspace(0, img.shape[0]-1, img.shape[0])
+        left_fit = self.left_line.best_fit
+        right_fit = self.right_line.best_fit
+        left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+        right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
         
         pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
         pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
         pts = np.hstack((pts_left, pts_right))
 
         # Draw the lane onto the warped blank image
-        cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+        cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
 
         # Warp the blank back to original image space using inverse perspective matrix (Minv)
         newwarp = cv2.warpPerspective(color_warp, self.Minv, (img.shape[1], img.shape[0])) 
@@ -268,15 +276,16 @@ class Video():
                     org=(100,150), fontFace=2, fontScale=1.5,
                     color=(255,255,255), thickness=2)
         return annotated_image
+        
     def process(self, image):
         
         # Undistort image
         undistorted_image = undistort(image, self.mtx, self.dist)
         
         # Threshold select
-        hls = bgr_to_hls(undistorted_image)
-        hls_binary = hls_channel_select(hls, thresh=(125, 255))
-        x_sobel_binary = sobel_hls(hls, thresh=(30,150))
+        hls = rgb_to_hls(undistorted_image)
+        hls_binary = hls_channel_select(hls, thresh=(130, 255), channel=2)
+        x_sobel_binary = sobel_hls(hls, thresh=(35,150), gradient='x', channel=1)
         binary_select = cv2.bitwise_or(hls_binary, x_sobel_binary)
         
         # Mask
@@ -286,18 +295,24 @@ class Video():
         # Perspective Transform
         binary_warped, self.M, self.Minv = perspective_transform(masked_edges)
         
-        # If left or right line are not detected, redo the sliding window search
+        # If reset, redo the sliding window search
         # Else just search in a margin around the previous line position
-        if self.left_line.detected is False or self.right_line.detected is False:
+        if self.reset is True:
             self.sliding_window(binary_warped)
-            self.reset = True
         else:
             self.skipping_window(binary_warped)
-            self.reset = False
         
         self.measuring_curvature()
         self.left_line.update(self.reset)
         self.right_line.update(self.reset)
+        
+        max_bad_detection = 8
+        if self.left_line.bad_detection > max_bad_detection or self.right_line.bad_detection > max_bad_detection:
+            self.reset = True
+            #print('Debug: Set rest to True')
+        else:
+            self.reset = False
+            #print('Debug: Set reset to False')
         
         processed_image = self.annotate(undistorted_image)
         

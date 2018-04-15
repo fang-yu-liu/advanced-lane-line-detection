@@ -5,13 +5,11 @@ import cv2
 class Line():
     def __init__(self):
         #n iteration that we want to average the line information
-        self.n = 5
+        self.n = 8
         # was the line detected in the last iteration?
         self.detected = False
         # numbers of the bad detection in a row
         self.bad_detection = 0
-        # max allowable bad detection in a row
-        self.max_bad_detection = 5
         #polynomial coefficients of the last n iterations
         self.recent_fits = []
         #x values of the last n fits of the line
@@ -22,6 +20,8 @@ class Line():
         self.best_fitx =None
         #polynomial coefficients for the most recent fit
         self.current_fit = [np.array([False])]
+        #polynomial coefficients for the previous fit
+        self.previous_fit = [np.array([False])]
         #x values of the last n fits of the most recent fit
         self.current_fitx = [np.array([False])]
         #radius of curvature of the line in some units
@@ -33,51 +33,41 @@ class Line():
         #difference in fit coefficients between best and current fits
         self.diffs = np.array([0,0,0], dtype='float')
         #threshod for the difference in fit coefficients
-        self.thresh = np.array([2,2,2], dtype='float')
+        self.thresh = np.array([1,1,1], dtype='float')
         #x values for detected line pixels
         self.allx = None
         #y values for detected line pixels
         self.ally = None
         
-    def add_to_recent_fits(self, fit, fitx):
-        self.recent_fitsx.append(fitx)
-        if len(self.recent_fitsx) > self.n:
-            # only keep newest n iterations, remove the oldest one (index = 0)
-            self.recent_fitsx.pop(0)
-        self.best_fitx = np.mean(self.recent_fitsx,0)
-        
-        self.recent_fits.append(fit)
+    def add_to_recent_fits(self):
+        #print('Add to recent fits')
+        self.recent_fits.append(self.current_fit)
         if len(self.recent_fits) > self.n:
-            # only keep newest n iterations, remove the oldest one (index = 0)
             self.recent_fits.pop(0)
         self.best_fit = np.mean(self.recent_fits,0)
+
+        self.recent_fitsx.append(self.current_fitx)
+        if len(self.recent_fitsx) > self.n:
+            self.recent_fitsx.pop(0)
+        self.best_fitx = np.mean(self.recent_fitsx,0)
         
     def update(self, reset):
         if reset is True:
             self.recent_fits = []
+            self.recent_fitsx = []
+            self.diffs = np.array([0,0,0], dtype='float')
             self.bad_detection = 0
-            #print("Reset the recent fits")
-            
-        if self.current_fit is None:
-            self.detected = False
-            #print("No current fit is found")
+            #print('Reset all line information')
         else:
+            if self.detected is True:
+                self.diffs = np.absolute((self.current_fit - self.previous_fit)/self.previous_fit)
+            else:
+                self.diffs = np.absolute((self.current_fit - self.previous_fit)/self.previous_fit)*5
+        if np.all(self.diffs < self.thresh):
+            self.add_to_recent_fits()
             self.detected = True
-            if self.best_fit is not None:
-                self.diffs = abs(self.best_fit - self.current_fit)
-                if np.all(self.diffs < self.thresh):
-                    #print("Good new measurement, add to recent fits")
-                    self.bad_detection = 0
-                    self.add_to_recent_fits(self.current_fit, self.current_fitx)
-                else:
-                    #print(self.bad_detection)
-                    self.bad_detection += 1
-                    #print("Curvature changes a lot from the previous measurement")
-                    if self.bad_detection > self.max_bad_detection:
-                        #print("set detected to false")
-                        self.detected = False
-                
-            else: 
-                self.add_to_recent_fits(self.current_fit, self.current_fitx)
-                #print("No best fit yet, add the current one to recent fits")
-   
+            self.bad_detection = 0
+        else:
+            self.detected = False
+            self.bad_detection += 1
+        self.previous_fit = self.current_fit

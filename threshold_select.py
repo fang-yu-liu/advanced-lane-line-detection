@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-def bgr_to_grayscale(img):
+def rgb_to_grayscale(img):
     '''
     Transform an image from BGR to GRAYSCALE
     Input:
@@ -9,10 +9,10 @@ def bgr_to_grayscale(img):
     Output:
         gray: image in grayscale colorspace
     '''
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY).astype(float)
     return gray
 
-def bgr_to_hls(img):
+def rgb_to_hls(img):
     '''
     Transform an image from BGR to GRAYSCALE
     Input:
@@ -20,7 +20,7 @@ def bgr_to_hls(img):
     Output:
         hls: image in HLS colorspace
     '''
-    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS).astype(float)
     return hls
 
 def hls_channel_select(hls, thresh=(0, 255), channel=2):
@@ -103,6 +103,6 @@ def sobel_hls(hls, thresh=(0, 255), gradient='x', channel=2, sobel_kernel=3):
     abs_sobel = np.absolute(sobel)
     scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
     
-    binary_output = np.zeros_like(scaled_sobel)
+    binary_output = np.zeros_like(channel_select)
     binary_output[(scaled_sobel > thresh[0]) & (scaled_sobel <= thresh[1])] = 1
     return binary_output
