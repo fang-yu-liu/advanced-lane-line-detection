@@ -118,15 +118,6 @@ class Video():
         
         binary_warped = np.copy(image)
         
-        #if self.left_line.detected is True:
-        #    left_fit = self.left_line.recent_fits[-1]
-        #else:
-        #    left_fit = self.left_line.best_fit
-        #if self.right_line.detected is True:
-        #    right_fit = self.right_line.recent_fits[-1]
-        #else:
-        #    right_fit = self.right_line.best_fit
-        
         left_fit = self.left_line.best_fit
         right_fit = self.right_line.best_fit
         
@@ -284,10 +275,10 @@ class Video():
         
         # Threshold select
         hls = rgb_to_hls(undistorted_image)
-        hls_binary = hls_channel_select(hls, thresh=(130, 255), channel=2)
-        x_sobel_binary = sobel_hls(hls, thresh=(35,150), gradient='x', channel=1)
+        hls_binary = hls_channel_select(hls, thresh=(125, 255), channel=2)
+        x_sobel_binary = sobel_hls(hls, thresh=(30,150), gradient='x', channel=1)
         binary_select = cv2.bitwise_or(hls_binary, x_sobel_binary)
-        
+
         # Mask
         vertices = calculate_vertices(binary_select)
         masked_edges = region_of_interest(binary_select, vertices)

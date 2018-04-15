@@ -1,26 +1,37 @@
 import cv2
 import numpy as np
 
-def rgb_to_grayscale(img):
+def bgr_to_rgb(img):
     '''
-    Transform an image from BGR to GRAYSCALE
+    Transform an image from BGR to RGB
     Input:
         img: image in BGR colorspace
     Output:
+        rgb: image in RGB colorspace
+    '''
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return rgb
+
+def rgb_to_grayscale(img):
+    '''
+    Transform an image from RGB to GRAYSCALE
+    Input:
+        img: image in RGB colorspace
+    Output:
         gray: image in grayscale colorspace
     '''
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY).astype(float)
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     return gray
 
 def rgb_to_hls(img):
     '''
-    Transform an image from BGR to GRAYSCALE
+    Transform an image from RGB to GRAYSCALE
     Input:
-        img: image in BGR colorspace
+        img: image in RGB colorspace
     Output:
         hls: image in HLS colorspace
     '''
-    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS).astype(float)
+    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
     return hls
 
 def hls_channel_select(hls, thresh=(0, 255), channel=2):
@@ -57,7 +68,7 @@ def mag_sobel_hls(hls, thresh=(0, 255), channel=2, sobel_kernel=3):
     mag_sobel = np.absolute(np.sqrt(sobelx**2, sobely**2))
     scaled_sobel = np.uint8(255*mag_sobel/np.max(mag_sobel))
     
-    binary_output = np.zeros_like(scaled_sobel)
+    binary_output = np.zeros_like(channel_select)
     binary_output[(scaled_sobel > thresh[0]) & (scaled_sobel <= thresh[1])] = 1
     return binary_output
 
@@ -78,7 +89,7 @@ def dir_sobel_hls(hls, thresh=(0, np.pi/2), channel=2, sobel_kernel=3):
     sobely = cv2.Sobel(channel_select, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
     dir_sobel = np.arctan2(np.absolute(sobely), np.absolute(sobelx))
     
-    binary_output = np.zeros_like(dir_sobel)
+    binary_output = np.zeros_like(channel_select)
     binary_output[(dir_sobel > thresh[0]) & (dir_sobel <= thresh[1])] = 1
     return binary_output
     
